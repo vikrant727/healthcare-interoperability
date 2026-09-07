@@ -63,8 +63,12 @@ def load_practitioners(source_dir):
 # --------------------------------------------------
 # Reconcile Practitioners against HAPI
 # --------------------------------------------------
-
-def reconcile_practitioners(practitioners_by_npi, hapi_url,missing_policy):
+def reconcile_practitioners(
+    practitioners_by_npi,
+    hapi_url,
+    missing_policy,
+    mapping
+):
     decision_inventory = []
 
     for npi, records in practitioners_by_npi.items():
