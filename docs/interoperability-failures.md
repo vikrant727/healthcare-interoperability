@@ -1,85 +1,135 @@
-# Healthcare Interoperability Failures: A Practical Gist
+# En Route Health
 
-Healthcare interoperability fails when systems exchange data successfully at the transport level but disagree about its meaning, structure, identity, or context.
+## FHIR Interoperability, Data Reconciliation & EHR Migration
 
-## Common Failure Modes
+### Overview
 
-### 1. Patient and Practitioner Identity Mismatch
+**En Route Health** is a healthcare interoperability project focused on a practical problem in EHR data exchange and migration: **moving clinical data between systems while resolving differences in identifiers, resource dependencies, references, and receiving-system data models.**
 
-- The same person is represented by different identifiers across systems.
-- Identifiers are reused, missing, malformed, or assigned by the wrong authority.
-- A practitioner reference points to a display name but not a resolvable resource.
+The initial implementation uses **Synthea synthetic EHR data** as the source and **HAPI FHIR** as the receiving FHIR server. The project is designed to evolve toward a flexible interoperability and reconciliation framework applicable to real-world EHR migration and integration scenarios.
 
-**Result:** records are linked to the wrong person or cannot be linked at all.
+### Problem
 
-### 2. Invalid or Incomplete FHIR Resources
+FHIR makes clinical data exchange technically standardized, but successful interoperability requires more than transmitting valid FHIR JSON.
 
-- Required fields are missing.
-- Resource types do not match the referenced data.
-- Profiles, extensions, or terminology bindings are ignored.
-- JSON is syntactically valid but violates the applicable FHIR profile.
+A clinical resource may contain references to:
 
-**Result:** ingestion rejects the resource, or downstream systems interpret it inconsistently.
+* Practitioners
+* Organizations
+* Locations
+* Patients
+* Encounters
+* Other dependent resources
 
-### 3. Terminology and Coding Differences
+The receiving system may already contain a corresponding resource, may represent it differently, or may not contain it at all.
 
-- Systems use different code systems for the same concept.
-- Local codes are sent without a translation or namespace.
-- Display text is treated as authoritative instead of the coded value.
-- Units and value-set versions differ.
+For example, during the initial transaction test, HAPI FHIR rejected a patient transaction because the referenced Practitioner could not be resolved using the source system's NPI identifier.
 
-**Result:** analytics, decision support, and clinical workflows produce incomplete or misleading results.
+The Practitioner existed in a separate source dataset but was not present in the receiving system.
 
-### 4. Reference and Endpoint Problems
+### Initial Interoperability Scenario
 
-- References are relative when an absolute URL is required, or vice versa.
-- URLs point to unstable, inaccessible, or environment-specific endpoints.
-- A resource is referenced before it is available to the receiving system.
-- Authentication and authorization rules differ between environments.
+**Source**
 
-**Result:** valid-looking resources cannot be resolved or retrieved.
+Synthea FHIR transaction
 
-### 5. Date, Time, and Context Loss
+**Referenced provider**
 
-- Time zones are omitted or converted incorrectly.
-- Event time, recording time, and effective time are conflated.
-- Encounter, facility, or practitioner context is dropped during transformation.
+NPI: `9999962993`
 
-**Result:** events appear in the wrong order or are attributed to the wrong setting.
+**Source Practitioner**
 
-### 6. Silent Data Loss During Transformation
+Dr. Fernande593 Mosciski958
 
-- Unsupported fields are discarded without a warning.
-- Arrays are flattened into a single value.
-- Unknown extensions are removed.
-- Null, absent, and empty values are treated as equivalent.
+**Receiving system**
 
-**Result:** the message is delivered successfully but no longer represents the source record.
+HAPI FHIR R4
 
-## Detection Checklist
+**Initial result**
 
-Before accepting an exchange, verify:
+Provider reference could not be resolved.
 
-1. The payload is valid JSON and conforms to the expected FHIR resource type.
-2. Required identifiers have the correct system, value, and assigning authority.
-3. References resolve in the target environment.
-4. Codes, units, and value sets are from agreed terminology systems.
-5. Dates include the required precision and time-zone information.
-6. Profiles and extensions are preserved or explicitly mapped.
-7. Validation failures, warnings, and dropped fields are observable.
-8. The transformed output can be traced back to its source record.
+**Resolution**
 
-## Prevention Pattern
+The source Practitioner was identified using its NPI, loaded into the receiving FHIR server, and subsequently verified through an identifier-based FHIR search.
 
-Treat interoperability as a contract, not a file-transfer problem:
+The original transaction then progressed to the next unresolved dependency: a Location reference.
 
-- Define resource profiles and examples before implementation.
-- Validate at both the sending and receiving boundaries.
-- Maintain an identifier and terminology mapping registry.
-- Use deterministic transformation rules with explicit loss reporting.
-- Test real edge cases: duplicates, missing references, conflicting identifiers, time zones, and unknown extensions.
-- Monitor rejection rates, unresolved references, validation warnings, and data-loss events.
+This demonstrates the project's core approach:
 
-## Key Takeaway
+> **Use integration failures to identify, investigate, reconcile, and resolve cross-system dependencies.**
 
-An exchange is interoperable only when the receiving system can identify the subject, understand the meaning, resolve the references, preserve the clinical context, and detect what could not be carried across.
+### Matching and Resolution Strategy
+
+The eventual solution is not intended to simply copy missing resources from one system into another.
+
+A receiving system may resolve an external reference through several strategies:
+
+1. **Match** an existing resource using an identifier such as NPI.
+2. **Map** the external identifier to an existing internal resource.
+3. **Apply a configured default** when business rules permit it.
+4. **Create** a resource when appropriate.
+5. **Queue an exception** when the match is ambiguous or requires human reconciliation.
+
+The framework is therefore being designed around **reference resolution and configurable matching strategies**, rather than simple resource replication.
+
+### Current Architecture
+
+```text
+Synthea
+   │
+   │ FHIR data
+   ▼
+Python Interoperability Layer
+   │
+   ├── Analyze references
+   ├── Identify dependencies
+   ├── Match identifiers
+   ├── Resolve missing resources
+   └── Record interoperability failures
+   │
+   ▼
+HAPI FHIR R4
+   │
+   └── Validate / process transaction
+```
+
+### Future Direction
+
+The project will progressively explore:
+
+* FHIR resource dependency analysis
+* Provider and organization matching
+* Cross-system identifier mapping
+* Reference resolution
+* Data reconciliation
+* Migration sequencing
+* Exception handling
+* FHIR transaction processing
+* C-CDA interoperability
+* Automated interoperability testing
+* Azure-based deployment using Azure Health Data Services
+* Eventually, EHR migration scenarios involving real-world interoperability constraints
+
+### Why This Matters
+
+EHR migration and integration projects frequently involve systems that have different identifiers, different representations of the same entities, and different assumptions about which resources already exist.
+
+The objective of En Route Health is to demonstrate that **interoperability is not simply an API problem—it is a data matching, reconciliation, dependency management, and business-rule problem as well.**
+
+The project uses synthetic data during development so that these scenarios can be explored safely without exposing patient information.
+
+### Current Status
+
+**Phase 1 — FHIR interoperability investigation**
+
+* Synthea configured as synthetic EHR source
+* HAPI FHIR configured as receiving system
+* Python interoperability tooling established
+* FHIR transaction successfully submitted to HAPI
+* Provider matching failure identified
+* Practitioner resolved using NPI
+* Practitioner loaded and verified in HAPI
+* Next dependency failure identified: Location matching
+
+The project is intentionally being developed **failure by failure**, documenting each interoperability issue, its root cause, resolution strategy, and verification result.
