@@ -1,0 +1,58 @@
+{
+  "resourceType": "Practitioner",
+  "id": "612b0f1a-6784-3157-adc4-f5661d0b8e96",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://synthetichealth.github.io/synthea/utilization-encounters-extension",
+      "valueInteger": 41
+    }
+  ],
+  "identifier": [
+    {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "9999962993"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "family": "Mosciski958",
+      "given": [
+        "Fernande593"
+      ],
+      "prefix": [
+        "Dr."
+      ]
+    }
+  ],
+  "telecom": [
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-direct",
+          "valueBoolean": true
+        }
+      ],
+      "system": "email",
+      "value": "Fernande593.Mosciski958@example.com",
+      "use": "work"
+    }
+  ],
+  "address": [
+    {
+      "line": [
+        "331 E FALMOUTH HWY"
+      ],
+      "city": "E FALMOUTH",
+      "state": "MA",
+      "postalCode": "025366039",
+      "country": "US"
+    }
+  ],
+  "gender": "female"
+}
