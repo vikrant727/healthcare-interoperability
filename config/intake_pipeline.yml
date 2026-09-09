@@ -1,0 +1,27 @@
+# enroute_config.yaml
+
+conversion:
+  source_format: FHIR_JSON
+
+  # Supported values:
+  # FHIR_JSON   - Active / MVP
+  # CCDA        - Future
+  # HL7V2       - Future
+  # mode: ANALYZE
+  mode: PROCESS 
+
+intake:
+  incoming_directory: data/incoming
+  processing_directory: data/processing
+  archive_directory: data/archive
+  error_directory: data/error
+
+fhir:
+  version: R4
+  classify_resources: true
+
+ccda:
+  enabled: false
+
+hl7v2:
+  enabled: false
