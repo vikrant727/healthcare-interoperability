@@ -7,6 +7,8 @@ Archive/
 **/state/
 **/output/
 **/Output/
+# Runtime state
+data/state/
 
 # Runtime files
 *.log
