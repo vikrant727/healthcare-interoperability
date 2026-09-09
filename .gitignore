@@ -1,0 +1,22 @@
+# En-Route runtime folders
+Archive/
+**/archive/
+**/failed/
+**/processing/
+**/logs/
+**/state/
+**/output/
+**/Output/
+
+# Runtime files
+*.log
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+
+# Environments
+.venv/
+venv/
+.env
