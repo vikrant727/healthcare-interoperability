@@ -19,7 +19,9 @@ directly against one or more FHIR JSON files.
 """
 
 from __future__ import annotations
-
+from destinations.csv.patient_csv_adapter import (
+    export_patients_to_csv,
+)
 import argparse
 import json
 from pathlib import Path
@@ -154,6 +156,32 @@ def parse_args() -> argparse.Namespace:
             "records to the console"
         ),
     )
+    parser.add_argument(
+        "--csv",
+        action="store_true",
+        help="Export normalized Patient records to CSV.",
+    )
+
+    parser.add_argument(
+        "--csv-profile",
+        type=Path,
+        default=Path("config/epic_patient_csv_profile.json"),
+        help=(
+            "CSV profile JSON file. "
+            "Default: config/epic_patient_csv_profile.json"
+        ),
+    )
+
+    parser.add_argument(
+        "--csv-output",
+        type=Path,
+        default=Path("data/output"),
+        help=(
+            "Directory for CSV output. "
+            "Default: data/output"
+        ),
+    )    
+
 
     return parser.parse_args()
 
@@ -180,13 +208,16 @@ def main() -> int:
     )
 
     total_patients = 0
+    all_patients = []
 
     for file_path in files:
         try:
             patients = process_file(
                 file_path
             )
-
+            all_patients.extend(
+                patients
+            )
             total_patients += len(
                 patients
             )
@@ -206,6 +237,25 @@ def main() -> int:
                 f"FAILED - {exc}"
             )
 
+    if args.csv and all_patients:
+        try:
+            output_path = export_patients_to_csv(
+                patients=all_patients,
+                profile_path=args.csv_profile,
+                output_directory=args.csv_output,
+            )
+
+            print(
+                f"\nCSV output created: "
+                f"{output_path}"
+            )
+
+        except Exception as exc:
+            print(
+                f"\nCSV export FAILED: {exc}"
+            )
+
+            return 1
     print(
         "\nPatient processing test complete"
     )
