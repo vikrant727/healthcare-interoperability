@@ -4,9 +4,9 @@ Archive/
 **/failed/
 **/processing/
 **/logs/
-**/state/
 **/output/
 **/Output/
+
 # Runtime state
 data/state/
 
