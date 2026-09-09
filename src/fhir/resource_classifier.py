@@ -1,17 +1,17 @@
 import json
-from collections import Counter
+from collections import defaultdict
 from pathlib import Path
 
 
-def classify_fhir_file(file_path):
+def load_and_group_fhir_resources(file_path):
     """
-    Inspect one FHIR JSON file and return the resource types found.
+    Load one FHIR JSON file and group actual resources by resourceType.
 
     Returns:
         {
-            "Patient": 1,
-            "Encounter": 5,
-            "Observation": 10
+            "Patient": [patient_resource],
+            "Encounter": [encounter_1, encounter_2],
+            "Observation": [observation_1, ...]
         }
     """
 
@@ -20,19 +20,37 @@ def classify_fhir_file(file_path):
     with file_path.open("r", encoding="utf-8") as file:
         data = json.load(file)
 
-    resource_counts = Counter()
+    grouped_resources = defaultdict(list)
 
     resource_type = data.get("resourceType")
 
     if resource_type == "Bundle":
         for entry in data.get("entry", []):
-            resource = entry.get("resource", {})
+            resource = entry.get("resource")
+
+            if not resource:
+                continue
+
             entry_resource_type = resource.get("resourceType")
 
             if entry_resource_type:
-                resource_counts[entry_resource_type] += 1
+                grouped_resources[entry_resource_type].append(
+                    resource
+                )
 
     elif resource_type:
-        resource_counts[resource_type] += 1
+        grouped_resources[resource_type].append(data)
 
-    return dict(resource_counts)
+    return dict(grouped_resources)
+
+
+def get_resource_counts(grouped_resources):
+    """
+    Return resource counts from already-grouped FHIR resources.
+    """
+
+    return {
+        resource_type: len(resources)
+        for resource_type, resources
+        in grouped_resources.items()
+    }

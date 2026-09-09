@@ -1,13 +1,14 @@
-def dispatch_resources(file_path, resource_counts):
+def dispatch_resources(file_path, grouped_resources):
     """
-    Route detected FHIR resource types to their processors.
+    Route grouped FHIR resources to resource-specific processors.
 
     Actual processors will be plugged in gradually.
     """
 
     print(f"\nDispatching resources from: {file_path.name}")
 
-    for resource_type, count in sorted(resource_counts.items()):
+    for resource_type, resources in sorted(grouped_resources.items()):
+        count = len(resources)
 
         if resource_type == "Patient":
             print(f"  Patient -> Patient processor ({count})")

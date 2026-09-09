@@ -2,7 +2,10 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from fhir.resource_classifier import classify_fhir_file
+from fhir.resource_classifier import (
+    load_and_group_fhir_resources,
+    get_resource_counts,
+)
 from fhir.resource_dispatcher import dispatch_resources
 
 
@@ -51,9 +54,12 @@ def run_fhir_pipeline(config):
     for file_path in json_files:
 
         try:
-            resource_counts = classify_fhir_file(
+            grouped_resources = load_and_group_fhir_resources(
                 file_path
             )
+            resource_counts = get_resource_counts(
+                grouped_resources
+           )
 
         except (json.JSONDecodeError, OSError) as exc:
             print(
@@ -80,7 +86,7 @@ def run_fhir_pipeline(config):
         if mode == "PROCESS":
             dispatch_resources(
                 file_path,
-                resource_counts
+                grouped_resources
             )
 
     print_resource_inventory(
