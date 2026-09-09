@@ -1,3 +1,5 @@
+from fhir.processors.patient_processor import process_patients
+
 def dispatch_resources(file_path, grouped_resources):
     """
     Route grouped FHIR resources to resource-specific processors.
@@ -11,7 +13,10 @@ def dispatch_resources(file_path, grouped_resources):
         count = len(resources)
 
         if resource_type == "Patient":
-            print(f"  Patient -> Patient processor ({count})")
+            process_patients(
+                resources,
+                source_file=file_path,
+    )
 
         elif resource_type == "Practitioner":
             print(f"  Practitioner -> Practitioner processor ({count})")
