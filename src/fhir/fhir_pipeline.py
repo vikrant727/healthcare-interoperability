@@ -86,9 +86,9 @@ def run_fhir_pipeline(config):
         if mode == "PROCESS":
             dispatch_resources(
                 file_path,
-                grouped_resources
+                grouped_resources,
+                practitioner_config=config.get("practitioner"),
             )
-
     print_resource_inventory(
         total_resources
     )

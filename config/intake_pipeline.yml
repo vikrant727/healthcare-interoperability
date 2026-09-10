@@ -30,7 +30,7 @@ practitioner:
   match:
     identifier_system: "http://hl7.org/fhir/sid/us-npi"
 
-  not_found_action: "CREATE"
+  not_found_action: "DEFAULT"
 
   default_mapping:
-    destination_practitioner_id: null  
+    destination_practitioner_id: '1001'  
