@@ -88,6 +88,8 @@ def run_fhir_pipeline(config):
                 file_path,
                 grouped_resources,
                 practitioner_config=config.get("practitioner"),
+                organization_config=config.get("organization"),    
+                location_config=config.get("location"),            
             )
     print_resource_inventory(
         total_resources

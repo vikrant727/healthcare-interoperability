@@ -34,3 +34,15 @@ practitioner:
 
   default_mapping:
     destination_practitioner_id: '1001'  
+
+organization:
+  mapping_mode: "DEFAULT"
+
+  default_mapping:
+    destination_organization_id: "1055"  
+
+location:
+  mapping_mode: "DEFAULT"
+
+  default_mapping:
+    destination_location_id: "1056"      
