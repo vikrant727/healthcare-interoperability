@@ -17,8 +17,16 @@ Production flow:
 This utility exists so developers can test Patient processing
 directly against one or more FHIR JSON files.
 """
+from __future__  import annotations
+from destinations.fhir.patient_fhir_adapter import (
+    deliver_patient_to_fhir,
+)
 
-from __future__ import annotations
+from state.patient_crosswalk import (
+    record_patient_crosswalk,
+)
+
+
 from destinations.csv.patient_csv_adapter import (
     export_patients_to_csv,
 )
@@ -38,11 +46,22 @@ from fhir.processors.patient_processor import (
 
 def process_file(
     file_path: Path,
-) -> list[dict[str, Any]]:
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
     """
-    Load one FHIR JSON file using the standard En-Route
-    classifier and send any Patient resources to the
-    Patient processor.
+    Load one FHIR JSON file once.
+
+    Returns:
+        (
+            normalized_patients,
+            raw_patient_resources
+        )
+
+    The same parsed Patient resources can therefore feed
+    multiple destination adapters without reopening the
+    source JSON file.
     """
 
     grouped_resources = (
@@ -64,7 +83,7 @@ def process_file(
             "no Patient resources found"
         )
 
-        return []
+        return [], []
 
     print(
         f"{file_path.name}: "
@@ -72,11 +91,17 @@ def process_file(
         "Patient resource(s)"
     )
 
-    return process_patients(
-        patient_resources,
-        source_file=file_path,
+    normalized_patients = (
+        process_patients(
+            patient_resources,
+            source_file=file_path,
+        )
     )
 
+    return (
+        normalized_patients,
+        patient_resources,
+    )
 
 def print_normalized_patients(
     patients: list[dict[str, Any]],
@@ -180,7 +205,45 @@ def parse_args() -> argparse.Namespace:
             "Directory for CSV output. "
             "Default: data/output"
         ),
-    )    
+    )  
+
+    parser.add_argument(
+        "--hapi",
+        action="store_true",
+        help=(
+            "Deliver Patient resources "
+            "to HAPI FHIR."
+        ),
+    )
+
+    parser.add_argument(
+        "--hapi-base-url",
+        default="http://localhost:8080/fhir",
+        help=(
+            "FHIR base URL. "
+            "Default: http://localhost:8080/fhir"
+        ),
+    )
+
+    parser.add_argument(
+        "--source-system",
+        default="synthea",
+        help=(
+            "Logical source system name. "
+            "Default: synthea"
+        ),
+    )
+
+    parser.add_argument(
+        "--crosswalk-db",
+        type=Path,
+        default=Path(
+            "data/state/patient_crosswalk.sqlite3"
+        ),
+        help=(
+            "Patient crosswalk SQLite database."
+        ),
+    )  
 
 
     return parser.parse_args()
@@ -209,17 +272,23 @@ def main() -> int:
 
     total_patients = 0
     all_patients = []
+    all_raw_patients = []
 
     for file_path in files:
         try:
-            patients = process_file(
+            patients, raw_patients = process_file(
                 file_path
-            )
-            all_patients.extend(
-                patients
             )
             total_patients += len(
                 patients
+            )
+
+            all_patients.extend(
+                patients
+            )
+
+            all_raw_patients.extend(
+                raw_patients
             )
 
             if args.show and patients:
@@ -256,6 +325,84 @@ def main() -> int:
             )
 
             return 1
+
+    # HAPI export
+    if args.hapi and all_raw_patients:
+
+        print(
+            "\nFHIR Patient delivery"
+        )
+        print(
+            "---------------------"
+        )
+
+        delivered_count = 0
+
+        for raw_patient, normalized_patient in zip(
+            all_raw_patients,
+            all_patients,
+        ):
+            try:
+                (
+                    destination_patient_id,
+                    http_status,
+                ) = deliver_patient_to_fhir(
+                    patient=raw_patient,
+                    source_system=args.source_system,
+                    base_url=args.hapi_base_url,
+                )
+
+                record_patient_crosswalk(
+                    args.crosswalk_db,
+                    source_system=args.source_system,
+                    source_patient_id=(
+                        normalized_patient[
+                            "source_fhir_patient_id"
+                        ]
+                    ),
+                    source_mrn=(
+                        normalized_patient[
+                            "source_mrn"
+                        ]
+                    ),
+                    source_mrn_system=(
+                        normalized_patient[
+                            "mrn_system"
+                        ]
+                    ),
+                    destination_system="HAPI",
+                    destination_base_url=(
+                        args.hapi_base_url
+                    ),
+                    destination_patient_id=(
+                        destination_patient_id
+                    ),
+                )
+
+                delivered_count += 1
+
+                print(
+                    "  "
+                    f"{normalized_patient['source_fhir_patient_id']}"
+                    " -> "
+                    f"Patient/{destination_patient_id}"
+                    f" (HTTP {http_status})"
+                )
+
+            except Exception as exc:
+                print(
+                    "  FAILED "
+                    f"{normalized_patient['source_fhir_patient_id']}: "
+                    f"{exc}"
+                )
+
+        print(
+            f"\nFHIR Patients delivered: "
+            f"{delivered_count}"
+        )
+
+
+    # Final summary
     print(
         "\nPatient processing test complete"
     )
@@ -266,7 +413,6 @@ def main() -> int:
     )
 
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(

@@ -1,3 +1,7 @@
 reconciliation:
+  organization:
+    strategy: single_destination
+    destination_id: "2053"
+
   practitioner:
-    if_missing: default
+    if_missing: create
