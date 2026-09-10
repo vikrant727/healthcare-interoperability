@@ -25,3 +25,12 @@ ccda:
 
 hl7v2:
   enabled: false
+  
+practitioner:
+  match:
+    identifier_system: "http://hl7.org/fhir/sid/us-npi"
+
+  not_found_action: "CREATE"
+
+  default_mapping:
+    destination_practitioner_id: null  

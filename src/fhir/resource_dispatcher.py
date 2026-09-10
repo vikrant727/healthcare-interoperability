@@ -1,36 +1,90 @@
 from fhir.processors.patient_processor import process_patients
+from fhir.services.practitioner_reconciliation import (
+    reconcile_practitioner,
+)
 
-def dispatch_resources(file_path, grouped_resources):
+
+def dispatch_resources(
+    file_path,
+    grouped_resources,
+    *,
+    practitioner_config=None,
+    source_system="synthea",
+    destination_system="hapi",
+    fhir_base_url="http://localhost:8080/fhir",
+):
     """
-    Route grouped FHIR resources to resource-specific processors.
+    Route already-classified FHIR resources to the
+    appropriate processing/reconciliation workflow.
 
-    Actual processors will be plugged in gradually.
+    The intake/classification layer has already grouped
+    resources by resourceType before they reach this dispatcher.
     """
 
     print(f"\nDispatching resources from: {file_path.name}")
 
-    for resource_type, resources in sorted(grouped_resources.items()):
+    # Temporary fallback until the caller passes the
+    # Practitioner section from intake_pipeline.yml.
+    if practitioner_config is None:
+        practitioner_config = {
+            "not_found_action": "CREATE",
+            "default_mapping": {
+                "destination_practitioner_id": None,
+            },
+        }
+
+    for resource_type, resources in sorted(
+        grouped_resources.items()
+    ):
         count = len(resources)
+
+        # --------------------------------------------------
+        # Patient
+        # --------------------------------------------------
 
         if resource_type == "Patient":
             process_patients(
                 resources,
                 source_file=file_path,
-    )
+            )
+
+        # --------------------------------------------------
+        # Practitioner
+        # --------------------------------------------------
 
         elif resource_type == "Practitioner":
-            print(f"  Practitioner -> Practitioner processor ({count})")
+            print(
+                f"  Practitioner -> "
+                f"Practitioner reconciliation ({count})"
+            )
 
-        elif resource_type == "PractitionerRole":
-            print(f"  PractitionerRole -> PractitionerRole processor ({count})")
+            for resource in resources:
+                result = reconcile_practitioner(
+                    resource,
+                    base_url=fhir_base_url,
+                    practitioner_config=practitioner_config,
+                    source_system=source_system,
+                    destination_system=destination_system,
+                )
 
-        elif resource_type == "Organization":
-            print(f"  Organization -> Organization processor ({count})")
+                normalized = result["normalized"]
 
-        elif resource_type == "Location":
-            print(f"  Location -> Location processor ({count})")
+                print(
+                    "    "
+                    f"{normalized['source_fhir_practitioner_id']} "
+                    f"-> NPI "
+                    f"{normalized['source_identifier_value']} "
+                    f"-> {result['action']} "
+                    f"Practitioner/"
+                    f"{result['destination_practitioner_id']}"
+                )
+
+        # --------------------------------------------------
+        # Not implemented yet
+        # --------------------------------------------------
 
         else:
             print(
-                f"  {resource_type} -> no processor configured yet ({count})"
+                f"  {resource_type} -> "
+                f"no processor configured yet ({count})"
             )
