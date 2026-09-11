@@ -1,7 +1,7 @@
 import json
 from collections import Counter
 from pathlib import Path
-
+from fhir.analysis.condition_analysis import analyze_conditions
 from fhir.resource_classifier import (
     load_and_group_fhir_resources,
     get_resource_counts,
@@ -18,6 +18,7 @@ def run_fhir_pipeline(config):
     incoming_directory = Path(
         config["intake"]["incoming_directory"]
     )
+    all_conditions = []
 
     mode = (
         config["conversion"]
@@ -57,9 +58,20 @@ def run_fhir_pipeline(config):
             grouped_resources = load_and_group_fhir_resources(
                 file_path
             )
+            for condition in grouped_resources.get(
+                "Condition",
+                [],
+            ):
+                all_conditions.append(
+                    (
+                        Path(file_path).name,
+                        condition,
+                    )
+                )
+                
             resource_counts = get_resource_counts(
                 grouped_resources
-           )
+            )
 
         except (json.JSONDecodeError, OSError) as exc:
             print(
@@ -94,7 +106,10 @@ def run_fhir_pipeline(config):
     print_resource_inventory(
         total_resources
     )
-
+    
+    if all_conditions:
+        analyze_conditions(all_conditions)
+ 
     if mode == "ANALYZE":
         print(
             "\nANALYZE mode complete. "

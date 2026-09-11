@@ -7,8 +7,8 @@ conversion:
   # FHIR_JSON   - Active / MVP
   # CCDA        - Future
   # HL7V2       - Future
-  # mode: ANALYZE
-  mode: PROCESS 
+  mode: ANALYZE
+  #mode: PROCESS 
 
 intake:
   incoming_directory: data/incoming
@@ -45,4 +45,4 @@ location:
   mapping_mode: "DEFAULT"
 
   default_mapping:
-    destination_location_id: "1056"      
+    destination_location_id: "PLACEHOLDER"      
